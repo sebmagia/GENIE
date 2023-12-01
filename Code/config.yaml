@@ -1,0 +1,65 @@
+name_of_project: 'EAFZ_T0'
+num_cores: 32 # How many cores would you like to use for travel time calculations? (it will increase memory cost)
+
+## Note, when running continuous days processing a number of parameters are also set in process_config
+
+latitude_range: [36, 39] # Latitude range of the region that will be processed
+longitude_range: [35, 39] # Longitude range of the region that will be processed
+depth_range: [-25000, 2000] # Note: depths are in meters, positive above sea level, negative below sea level, and 'increasing' depth means going from deep to shallow.
+time_range: # This sets up the Catalog and Pick files to have these years initialized
+  start: '2021-05-01'
+  end: '2021-07-01'
+## we dont use this for EAFZ
+#client : 'IRIS'
+#network: 'HV'
+####
+degree_padding: 0.25 # This region is appended to the lat_range and lon_range values above, and is used as a `padding' region, where we compute travel times, and simulate events in this region, yet train to predict zero for all labels in this area. This way, sources just outside the domain of interest arn't falsely mis-located inside the region (since the model learns what `exterior' events look like, to some extent).
+number_of_grids: 5 # Number of distinct spatial graphs to create (this reduced slight bias that can result from only using one spatial graph)
+number_of_spatial_nodes: 500 # Number of nodes per spatial graph
+
+load_initial_files: [False]
+use_pretrained_model: [None]
+
+velocity_model:
+  Depths: [-25000, -20000, -16000, -12000, -10000, -8000, -6000, -4000, -2000, -1000, 0,   2000]
+  Vp: [6830,  6400 ,  6320 , 6050  , 6000  , 5960 , 5850 , 5750 , 5620 , 4520, 3880, 3880]
+  Vs: [3920  ,  3670 ,  3620 , 3460  , 3440  , 3430 , 3380 , 3310 , 3030 , 2430, 2040, 2040]
+
+### ASSEMBLE NETWORK DATA ###
+with_density: False
+use_spherical: False ## Should only set to true if travel time model also has spherical projection (to be added soon)
+depth_importance_weighting_value_for_spatial_graphs: 2.5 # up scale the depth importance of node positions when creating spatial graph if using a large horizontally extended domain
+fix_nominal_depth: True
+number_of_update_steps: 5000
+
+### TRAVEL TIMES ###
+## These are the elevation ranges over which stations might vary
+## we compute travel times for a range of reciever elevations
+depth_steps:
+  min_elevation: 0 # meters
+  max_elevation: 2000 # meters
+  elevation_step: 100 # meters
+
+# Can increase or decrease these as needed
+dx: 500.0 # Cartesian distance between nodes in FMM computation
+d_deg: 0.005 # Degree distance between saved interpolation query points
+dx_depth: 500.0 # Depth distance between nodes in FMM computation and saved query points
+
+save_dense_travel_time_data: False # Save the dense travel times (only necessary if not training travel time neural network)
+train_travel_time_neural_network: True # Fit a travel time neural network to the computed travel times
+using_3D: False # Not fully implemented yet, must adjust travel time calculations and load 3d travel time neural network
+using_1D: True
+
+## Graph params
+k_sta_edges: 8 # or 10 are reasonable choices
+k_spc_edges: 15
+k_time_edges: 10
+t_win: 10.0 ## This is the time window over which predictions are made. Shouldn't be changed for now.
+## Note that right now, this shouldn't change, as the GNN definitions also assume this is 10 s.
+
+## Additional training params
+device: 'cuda' # or 'cpu'
+max_number_pick_association_labels_per_sample: 1500 # Max number of picks to compute associations for during training 
+## (cuda RAM can run out for very large numbers of input picks in a single window during training at association prediction step). 
+## This does not effect the input picks, just the ones we predict association labels for
+make_visualize_predictions: True # Plot example predictions during training (note: creates a lot of files currently)
